@@ -189,7 +189,7 @@ export function pseudoSnapshotFor(source, pseudo, style, session) {
   const st = session && session.styleShare ? session.share : null
   const id = st ? st.ids.get(source) : undefined
   // Same shadow-host and slotted escape as the element share (`:host(:nth-child(2))::before`).
-  if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source, session))
+  if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source, session), source.ownerDocument)
   const key = id + pseudo
   const snaps = st.pseudo || (st.pseudo = new Map())
   const rec = snaps.get(key)
@@ -203,7 +203,7 @@ export function pseudoSnapshotFor(source, pseudo, style, session) {
     }
     return snap
   }
-  const snap = snapshotComputedStyle(style, pseudoUniverseFor(source, session))
+  const snap = snapshotComputedStyle(style, pseudoUniverseFor(source, session), source.ownerDocument)
   // By reference, copied on the first twin (shareLists): a copy per pseudo was paid for 1,936
   // deep-tree identities that never had a twin. The flex-item min-width floor written later
   // depends on the host's display, identical for twins.

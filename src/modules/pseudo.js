@@ -697,7 +697,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
         span.textContent = first
         span.setAttribute('data-snapdom-pseudo', '::first-letter')
         const universe = pseudoUniverseFor(source, sessionCache)
-        const snapshot = snapshotComputedStyle(style, universe)
+        const snapshot = snapshotComputedStyle(style, universe, source.ownerDocument)
         const key = getStyleKey(snapshot, 'span', true, false, '', universe)
         sessionCache.styleMap.set(span, key)
 
