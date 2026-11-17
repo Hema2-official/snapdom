@@ -14,7 +14,7 @@
  * @module styles
  */
 
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, fullReadableProps } from '../utils/index.js'
 import { isFirefox, isSafari } from '../utils/browser.js'
 import {
   seq, env, bumpEpoch, bumpSeq, stampNode, stampSubtree, stampOf, shadowHostsOf, setupInvalidationOnce,
@@ -132,7 +132,7 @@ function readableProps(universe) {
  * when null) plus its own inline props.
  * @param {CSSStyleDeclaration} style
  * @param {object} [options] - embedFonts adds the font-feature props; excludeStyleProps filters
- * @param {Element|null} [el] - for its inline style
+ * @param {Element} el - for its inline style, and its document's list in the full read
  * @param {Set<string>|null} [universe] - from universeFor; null reads everything
  * @returns {Record<string, string>}
  */
@@ -165,7 +165,8 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
       for (let i = 0; i < inline.length; i++) addProp(inline[i])
     }
   } else {
-    for (let i = 0; i < style.length; i++) addProp(style[i])
+    const list = fullReadableProps(style, el.ownerDocument)
+    if (list) for (let i = 0; i < list.length; i++) readProp(list[i])
   }
     // Ensure text-decoration props: some engines do not list them in the iteration.
   const EXTRA_TEXT_DECORATION_PROPS = [

@@ -669,6 +669,30 @@ export function parseContent(content) {
 
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
+const fullListCache = new WeakMap()
+/** Return the props a full read takes from any style of `doc`, by name, which are the computed
+ *  style's list without custom properties and what shouldIgnoreProp drops. Reading by index
+ *  cost Chrome 157 about what reading the value does (0.28 against 0.24 µs), and every element
+ *  and pseudo-element lists the same props in one order (480 in Chrome 157, 401 in Firefox
+ *  160). Null when the style lists nothing, outside a browsing context.
+ *  Pinned by `__tests__/module.styles.fullRead.test.js`.
+ *  @param {CSSStyleDeclaration} style a computed style from `doc`
+ *  @param {Document} doc
+ *  @returns {string[]|null} */
+export function fullReadableProps(style, doc) {
+  let list = fullListCache.get(doc)
+  if (!list) {
+    const props = new Set()
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i]
+      if (!shouldIgnoreProp(prop)) props.add(prop)
+    }
+    if (!props.size) return null
+    fullListCache.set(doc, list = [...props])
+  }
+  return list
+}
+
 /**
  * Read a computed style into a plain map, only the `universe` props when given (the rest sit
  * at the UA default getStyleKey drops). Deep tree, a `::before` on each of 1,936 leaves:
