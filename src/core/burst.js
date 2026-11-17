@@ -59,8 +59,8 @@ import { yieldWhenTaskSpent, isFirefox, isSafari } from '../utils/browser.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
-/** Open roots found by the API's safety scan, consumed by create/run tracking so one call
- *  does not walk the same subtree twice before deciding a memo hit. */
+/** Open roots found by the API's safety scan, read by createState and consumed by run(), so
+ *  tracking does not walk the same subtree again before deciding a memo hit. */
 const safetyScans = new WeakMap()
 /** Roots whose fetched bytes revealed an opaque animation only after inlining. Once known,
  *  keep them on the fresh path instead of rebuilding and immediately disposing state on
@@ -198,10 +198,10 @@ export function isAutoBurstSafe(element) {
  * gets its own. Re-scanned per capture (~1ms at 8k nodes, against a ~100ms pipeline), and a
  * root attached AFTER the memo invalidates on sight. Closed roots stay unreachable.
  */
-function trackShadowRoots(element, state) {
+function trackShadowRoots(element, state, keepScan = false) {
   if (!element.querySelectorAll) return false
   const scanned = safetyScans.get(element)
-  safetyScans.delete(element)
+  if (!keepScan) safetyScans.delete(element)
   const roots = new Set(scanned?.roots || [])
   if (scanned) {
     state.controls = scanned.controls
@@ -706,7 +706,7 @@ function createState(element) {
   try {
     for (const type of ELEMENT_EVENTS) element.addEventListener(type, onMediaDirty, { capture: true, passive: true })
   } catch { /* degrade: record-less interactions won't invalidate */ }
-  const usedSafetyScan = trackShadowRoots(element, state)
+  const usedSafetyScan = trackShadowRoots(element, state, true)
   if (!usedSafetyScan) collectControls(element, state)
   collectScrollNodes(element, state)
   trackPendingImages(element, state)
@@ -830,8 +830,8 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     } else {
       state.pendingSig = null
     }
-    // Before serving: a shadow root attached since the last capture produces no mutation
-    // record anywhere, so it has to be discovered by scanning.
+    // Before serving: a shadow root attached during or since the last capture produces no
+    // mutation record anywhere, so it has to be discovered by scanning.
     trackShadowRoots(element, state)
     // Same for an <img> appended since the last capture's finally: it has no load listener
     // yet. Arming here too closes the between-captures window, for one
@@ -1054,10 +1054,8 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       state.pending.length = 0
       state.torn = false
       state.capturing = false
-      if (!state.disposed) {
-        trackShadowRoots(element, state) // open roots attached during capture
-        trackPendingImages(element, state) // and <img>s still loading: their load must invalidate
-      }
+      // <img>s still loading: their load must invalidate
+      if (!state.disposed) trackPendingImages(element, state)
     }
   }
 
